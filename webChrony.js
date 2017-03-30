@@ -1,4 +1,4 @@
-var bufferLength = 2048  // number of samples to collect per frame
+var bufferLength = 256  // number of samples to collect per frame
 var triggerThreshold = 0.25
 var maxV = 500
 var minV = 1
