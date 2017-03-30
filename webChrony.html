@@ -1,0 +1,39 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>webChrony</title>
+  <meta name="description" content="webChrony">
+  <meta name="author" content="Adrian Kelly">
+
+  <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+  <![endif]-->
+</head>
+
+<body>
+	<h1 id="title">webChrony</h1>
+	<h1 id="reading"><span id="velocity">0</span></h1>
+	<canvas id="canvas" width="1000" height="256" ></canvas>
+	<div id="shotTable"></div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+	<script src="webChrony.js"></script>
+</body>
+
+<style>
+    #canvas {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        background-color: black;
+    }
+    #title, #reading, #shotTable {
+        text-align: center;
+    }
+</style>
+
+</html>
+

@@ -1,0 +1,14 @@
+{
+    "env": {
+      "browser":true
+    },
+    "extends": "standard",
+    "plugins": [
+        "standard",
+        "promise"
+    ],
+    "globals": {
+      "_":true,
+      "requestAnimFrame":true
+    }
+}
