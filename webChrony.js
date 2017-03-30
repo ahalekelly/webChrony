@@ -1,7 +1,7 @@
 var bufferLength = 256  // number of samples to collect per frame
-var triggerThreshold = 0.25
-var maxV = 500
-var minV = 1
+var triggerThreshold = 0.2
+var maxV = 300
+var minV = 10
 var sensorDistance = 1.125
 
 // Hacks to handle vendor prefixes
