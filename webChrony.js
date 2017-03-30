@@ -116,7 +116,6 @@ function processAudio (audioEvent) {
         firstTrigger = undefined
         vReading.innerHTML = v.toPrecision(3)
       }
-      break
     }
   }
   sampleCounter += bufferLength
