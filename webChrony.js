@@ -97,7 +97,7 @@ function processAudio (audioEvent) {
       firstTrigger = undefined
       vReading.innerHTML = 'Timeout'
       console.log('Error: timeout')
-		shotsDiv.insertAdjacentHTML('afterbegin','<h3>Timeout</h3>')
+		shotsDiv.insertAdjacentHTML('afterbegin','<h2>Timeout</h2>')
     }
     if (amplitudeArray[i] > triggerThreshold && sampleCounter + i - triggers[triggers.length - 1] > minTriggerDiff) {
       if (firstTrigger === undefined) {
