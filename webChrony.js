@@ -1,3 +1,4 @@
+'use strict';
 var bufferLength = 256  // number of samples to collect per frame
 var triggerThreshold = 0.2
 var maxV = 300
