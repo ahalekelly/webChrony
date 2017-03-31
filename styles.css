@@ -66,10 +66,10 @@ html, body {
 }
 
 h3 {
-	font-size: 14px;
+	font-size: 18px;
 }
 
-@media (min-width: 700px) {
+@media (min-width: 900px) {
 	h3 {
 		font-size: 2vw;
 	} 
