@@ -33,14 +33,15 @@ html, body {
 	width: 100%;
 }
 
-.column-divider {
+.column-cell {
 	margin-left: 0;
 	margin-right: 0;
 	margin-top: 1vh;
 	margin-bottom: 1vh;
 	padding: 0;
+}
+.column-divider {
 	border-right: solid #e0e0e0 1px;
-	border-left: solid #e0e0e0 1px;
 }
 
 .text-center {
