@@ -53,14 +53,37 @@ html, body {
 	margin-bottom:12px;
 	text-align:center;
 }
+
 .center {
 	margin-left:auto;
 	margin-right:auto;
 }
 
+
 .mdl-layout__header-row {
-  padding-left: 40px;
+  height: 192px;
+  padding: 0;
 }
+
+.canvas {
+	margin: 0;
+	height: 64px;
+}
+
+@media (min-width: 840px) {
+	.mdl-layout__header-row {
+		height:192px;
+		padding-right: 0;
+	}
+	.canvas {
+		height:192px;
+	}
+}
+
+#title {
+	margin:0 4vw;
+}
+
 
 .mdl-layout.is-small-screen .mdl-layout__header-row h3 {
   font-size: inherit;

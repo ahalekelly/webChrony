@@ -1,39 +1,181 @@
 <!doctype html>
-
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-
-  <title>webChrony</title>
-  <meta name="description" content="webChrony">
-  <meta name="author" content="Adrian Kelly">
-
-  <!--[if lt IE 9]>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
-  <![endif]-->
-</head>
-
-<body>
-	<h1 id="title">webChrony</h1>
-	<h1 id="reading"><span id="velocity">0</span></h1>
-	<canvas id="canvas" width="1000" height="256" ></canvas>
-	<div id="shotTable"></div>
-
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
-	<script src="webChrony.js"></script>
-</body>
-
-<style>
-    #canvas {
-        margin-left: auto;
-        margin-right: auto;
-        display: block;
-        background-color: black;
-    }
-    #title, #reading, #shotTable {
-        text-align: center;
-    }
-</style>
-
-</html>
-
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="description" content="webChrony">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+		<title>webChrony</title>
+		
+		<!-- Add to homescreen for Chrome on Android -->
+		<meta name="mobile-web-app-capable" content="yes">
+		<link rel="icon" sizes="192x192" href="images/android-desktop.png">
+		
+		<!-- Add to homescreen for Safari on iOS -->
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		<meta name="apple-mobile-web-app-title" content="Material Design Lite">
+		<link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+		
+		<!-- Tile icon for Win8 (144x144 + tile color) -->
+		<meta name="msapplication-TileImage" content="images/touch/ms-touch-icon-144x144-precomposed.png">
+		<meta name="msapplication-TileColor" content="#3372DF">
+		
+		<link rel="shortcut icon" href="images/favicon.png">
+		
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
+		<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+		<link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.blue-orange.min.css" />
+		<link rel="stylesheet" href="styles.css">
+	</head>
+	<body class="mdl-color--grey-100 mdl-color-text--grey-700 mdl-base">
+		<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+			<header class="mdl-layout__header mdl-layout--fixed-header mdl-layout__header--scroll mdl-color--primary">
+				<div class="mdl-layout__header-row mdl-grid">
+					<div class="mdl-cell mdl-cell--4-col-desktop mdl-cell--8-col-tablet mdl-cell--4-col-phone canvas" style="display: flex;align-items:center;justify-content:left;">
+						<h2 id="title">webChrony</h2>
+					</div>
+					<div class="mdl-cell mdl-cell--4-col-desktop mdl-cell--8-col-tablet mdl-cell--4-col-phone canvas" id="canvas1">
+					</div>
+					<div class="mdl-cell mdl-cell--4-col-desktop mdl-cell--8-col-tablet mdl-cell--4-col-phone canvas" id="canvas2">
+					</div>
+				</div>
+			</header>
+			<main class="mdl-layout__content">
+				<div class="mdl-grid">
+					<div class="mdl-layout__tab-panel is-active mdl-cell mdl-cell--9-col-desktop mdl-cell--8-col-tablet mdl-cell--4-col-phone">
+						<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+							<div class="mdl-card mdl-cell mdl-cell--12-col">
+								<div class="mdl-card__supporting-text">
+									<h3 style="margin-bottom:0px;margin-left:1vw;">Velocity</h3>
+									<div class="mdl-grid">
+										<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+											<h3 class="cell-values">Min</h3>
+											<h3 class="cell-values">67.2</h3>
+										</div>
+										<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+											<h3 class="cell-values">Avg</h3>
+											<h3 class="cell-values">71.5</h3>
+										</div>
+										<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+											<h3 class="cell-values">Max</h3>
+											<h3 class="cell-values">74.9</h3>
+										</div>
+										<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell">
+											<h3 class="cell-values">StdDev</h3>
+											<h3 class="cell-values">3.9</h3>
+										</div>
+									</div>
+								</div>
+							</section>
+							<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+								<div class="mdl-card mdl-cell mdl-cell--12-col">
+									<div class="mdl-card__supporting-text">
+										<h3 style="margin-bottom:0px;margin-left:1vw;">Rounds per Second</h3>
+										<div class="mdl-grid">
+											<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+												<h3 class="cell-values">Min</h3>
+												<h3 class="cell-values">7.2</h3>
+											</div>
+											<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+												<h3 class="cell-values">Avg</h3>
+												<h3 class="cell-values">9.7</h3>
+											</div>
+											<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell column-divider">
+												<h3 class="cell-values">Max</h3>
+												<h3 class="cell-values">12.2</h3>
+											</div>
+											<div class="mdl-cell mdl-cell--3-col-desktop mdl-cell--2-col-tablet mdl-cell--1-col-phone column-cell">
+												<h3 class="cell-values">StdDev</h3>
+												<h3 class="cell-values">3.5</h3>
+											</div>
+										</div>
+									</div>
+								</div>
+							</section>
+							<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+								<table class="mdl-data-table mdl-js-data-table mdl-data-table full-width">
+									<thead>
+										<tr>
+											<th>Velocity</th>
+											<th>Rounds per Second</th>
+											<th class="full-width">Delete</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td>72.4</td>
+											<td>12.2</td>
+											<td>
+												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
+													<i class="material-icons">close</i>
+												</button>
+											</td>
+										</tr>
+										<tr>
+											<td>67.2</td>
+											<td>7.2</td>
+											<td>
+												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
+													<i class="material-icons">close</i>
+												</button>
+											</td>
+										</tr>
+										<tr>
+											<td>74.9</td>
+											<td></td>
+											<td>
+												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
+													<i class="material-icons">close</i>
+												</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</section>
+						</div>
+						<div class="mdl-card mdl-cell mdl-cell--3-col-desktop mdl-cell--8-col-tablet mdl-cell--4-col-phone mdl-cell--top mdl-shadow--2dp">
+							<form action="#" style="margin: 24px">
+								<h4>Settings</h4>
+								<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label full-width">
+									<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="sample4" value=0.75>
+									<label class="mdl-textfield__label" for="sample4" style="color: #909090;font-size:14px;">Sensor Spacing</label>
+									<span class="mdl-textfield__error">Not a number!</span>
+								</div>
+								<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label full-width">
+									<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="sample4" value=0.2>
+									<label class="mdl-textfield__label" for="sample4" style="color: #909090;font-size:14px;">Threshold</label>
+									<span class="mdl-textfield__error">Not a number!</span>
+								</div>
+								<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label full-width">
+									<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="sample4" value=10>
+									<label class="mdl-textfield__label" for="sample4" style="color: #909090;font-size:14px;">Minimum Velocity</label>
+									<span class="mdl-textfield__error">Not a number!</span>
+								</div>
+								<div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label full-width">
+									<input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="sample4" value=300>
+									<label class="mdl-textfield__label" for="sample4" style="color: #909090;font-size:14px;">Maximum Velocity</label>
+									<span class="mdl-textfield__error">Not a number!</span>
+								</div>
+							</form>
+							
+						</div>
+					</div>
+					<footer class="mdl-mega-footer">
+						<br>
+						<br>
+						<br>
+						<br>
+					</footer>
+				</main>
+			</div>
+			<script src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.6.0/rickshaw.min.css" />
+			<script src="https://d3js.org/d3.v3.min.js"></script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.6.0/rickshaw.min.js"></script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+			<script src="webChrony.js"></script>
+			<script>
+			</script>
+		</body>
+	</html>
