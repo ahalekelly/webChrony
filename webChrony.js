@@ -45,7 +45,6 @@ var maxTriggerDiff
 
 var mouseDown = false
 
-//document.addEventListener("DOMContentLoaded", function() {
 var canvas1 = document.getElementById("canvas1")
 var canvas2 = document.getElementById("canvas2")
 
@@ -55,21 +54,26 @@ try {
 	console.err('Web Audio API is not supported in this browser')
 }
 
-var graphHeight = canvas1.offsetHeight
-var graphWidth = canvas1.offsetWidth
 var graph1 = new Rickshaw.Graph( {
 	element: canvas1,
-	width: graphWidth,
-	height: graphHeight,
+	width: canvas1.offsetWidth,
+	height: canvas1.offsetHeight,
 	renderer: 'line',
 	min: 0,
 	max: 1.0,	
 	series: new Rickshaw.Series.FixedDuration([{name:"threshold",color:"lawngreen"},{ name: 'data', color:"white"}], undefined, {
-		timeInterval: 2000/graphWidth,
-		maxDataPoints: graphWidth,
+		timeInterval: 2000/canvas1.offsetWidth,
+		maxDataPoints: canvas1.offsetWidth,
 		timeBase: new Date().getTime() / 1000
 	}) 
 });
+
+window.onresize = function() {
+  graph1.configure({
+	width: canvas1.offsetWidth,
+	height: canvas1.offsetHeight
+  });
+}
 
 graph1.series.addData({threshold:triggerThreshold})
 
@@ -80,21 +84,24 @@ document.onmouseup = mouseUpHandler
 function mouseDownHandler(e) {
 	var rect = this.getBoundingClientRect();
 	this.onmousemove = moveHandler
+	console.log(e.clientY, rect.top)
+	console.log(e.clientY-rect.top)
 	console.log("mouseDown")
 	console.log(e)
-	triggerThreshold = (rect.height - e.clientY - rect.top)/rect.height;
+	triggerThreshold = (rect.height - (e.clientY - rect.top))/rect.height;
 	console.log(triggerThreshold)
 }
 
 function mouseUpHandler(e) {
-	console.log("mouseUp")
+//	console.log("mouseUp")
 	canvas1.onmousemove = null
 	canvas2.onmousemove = null
 }
 
 function moveHandler(e){
+	console.log("mouseMove")
 	var rect = this.getBoundingClientRect();
-	triggerThreshold = (rect.height - e.clientY - rect.top)/rect.height;
+	triggerThreshold = (rect.height - (e.clientY - rect.top))/rect.height;
 }
 
 graph1.render();
@@ -115,7 +122,6 @@ navigator.mediaDevices.getUserMedia({
 		echoCancellation: false
 	}
 }).then(setupAudioNodes).catch(onError)
-//})
 
 function setupAudioNodes (stream) {
 	var sourceNode = audioContext.createMediaStreamSource(stream)
@@ -143,6 +149,7 @@ function processAudio (audioEvent) {
 	//  requestAnimFrame(drawChart)
 	minValue = _.min(amplitudeArray)
 	maxValue = _.max(amplitudeArray)
+	/*
 	for (var i = 0; i < amplitudeArray.length; i++) {
 		if (i + sampleCounter > firstTrigger + maxTriggerDiff) {
 			firstTrigger = undefined
@@ -169,6 +176,7 @@ function processAudio (audioEvent) {
 			}
 		}
 	}
+	*/
 	graph1.series.addData({data:maxValue, threshold:triggerThreshold});
 	graph1.render();				
 	
