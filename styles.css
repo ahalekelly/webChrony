@@ -67,6 +67,7 @@ html, body {
 
 .canvas {
 	margin: 0;
+	margin-left: 1vw;
 	height: 64px;
 }
 

@@ -1,14 +1,16 @@
-{
+module.exports = {
     "env": {
       "browser":true
     },
     "extends": "standard",
     "plugins": [
         "standard",
-        "promise"
+        "promise",
     ],
     "globals": {
       "_":true,
-      "requestAnimFrame":true
+      "requestAnimFrame":true,
+      "Rickshaw":true,
+      "CircularBuffer":true,
     }
 }
