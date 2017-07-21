@@ -1,14 +1,15 @@
 'use strict'
-var audioBufferLength = 512  // number of samples to collect per frame
-var circularBufferLength = 7000
+var audioBufferLength = 256  // number of samples to collect per frame
+var circularBufferLength = 7500
 var triggerThreshold = 0.2
 var maxV = 300
 var minV = 10
-var maxROF = 30
+var maxROF = 25
 var sensorDistance = 1.125
 var graphTriggerColor = 'lawngreen'
 var graph2UpdateInterval = 1000
 var thresholdHigh = 0.98
+var rofResetTime = 5
 
 // Hacks to handle vendor prefixes
 navigator.getUserMedia = (navigator.getUserMedia ||
@@ -38,21 +39,83 @@ var minValue
 var maxValue
 
 var state = 0
-var sampleCounter = 0
-var triggers = []
-var shots = []
 var firstTrigger = 0
 var secondTrigger
+var triggers = []
+var rof
+var shots = []
 var velocities = []
+var rofs = []
 var minTriggerDiff
 var maxTriggerDiff
 var resetDiff
 var lastPoint
 
+document.getElementById('spacing').addEventListener('keyup', function() {
+  var sensorDistanceInput = parseFloat(this.value)
+  if (Number.isNaN(sensorDistanceInput)|| sensorDistanceInput === 0 ) {
+    console.log('invalid input:')
+    console.log(this.value)
+	sensorDistance = sensorDistanceInput
+  } else {
+    console.log('valid input:')
+	console.log(this.value)
+	console.log(sensorDistanceInput)
+	sensorDistance = sensorDistanceInput
+	velocities.length = 0;
+	for (var shoti=0; shoti<shots.length; shoti++) {
+	  velocities[shoti] = sensorDistance * audioContext.sampleRate / (shots[shoti][1] - shots[shoti][0])
+	}
+	minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
+	maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
+	updateStats()
+  }
+});
+
+document.getElementById('threshold').addEventListener('keyup', function() {
+  if (parseFloat(this.value) === NaN) {
+    console.log('invalid input')
+    console.log(this.value)
+  } else {
+    triggerThreshold = parseFloat(this.value)
+    console.log(this.value)
+    console.log(triggerThrehold)
+    console.log(typeof triggerThreshold)
+  }
+});
+
+document.getElementById('vMinSetting').addEventListener('keyup', function() {
+  if (parseFloat(this.value) === NaN) {
+    console.log('invalid input')
+    console.log(this.value)
+  } else {
+    minV = parseFloat(this.value)
+    minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
+     console.log((secondTrigger - firstTrigger))
+  }
+});
+document.getElementById('vMaxSetting').addEventListener('keyup', function() {
+  if (parseFloat(this.value) === NaN) {
+    console.log('invalid input')
+    console.log(this.value)
+  } else {
+    maxV = parseFloat(this.value)
+    maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
+  }
+});
+
 var canvas1 = document.getElementById('canvas1')
 var canvas2 = document.getElementById('canvas2')
-var vAvg = document.getElementById('vAvg')
+
 var vLast = document.getElementById('vLast')
+var vAvg = document.getElementById('vAvg')
+var vMin = document.getElementById('vMin')
+var vMax = document.getElementById('vMax')
+
+var rofLast = document.getElementById('rofLast')
+var rofAvg = document.getElementById('rofAvg')
+var rofMin = document.getElementById('rofMin')
+var rofMax = document.getElementById('rofMax')
 
 try {
   audioContext = new AudioContext()
@@ -186,7 +249,8 @@ function processAudio (audioEvent) {
   maxValue = _.max(amplitudeBuffer._array)
   for (var i = amplitudeBuffer.length-audioBufferLength; i < amplitudeBuffer.length; i++) {
     if (state === 2 && i - firstTrigger > resetDiff) {
-      console.log('reset');
+//      console.log('reset');
+					updateGraph2()
       state = 0;
     }
     if (state === 0 || state === 1) {
@@ -215,21 +279,56 @@ function processAudio (audioEvent) {
 					console.log('second trigger')
 					state = 2;
 					secondTrigger = i
-					var triggerDiff = i - triggers[triggers.length - 1]
-					var v = sensorDistance * audioContext.sampleRate / triggerDiff
 					triggers.push(i)
-					var rof = audioContext.sampleRate / (i - shots[shots.length - 1])
-					shots.push(sampleCounter + i)
+					var v = sensorDistance * audioContext.sampleRate / (secondTrigger - firstTrigger)
+                    if (shots.length > 0) {
+   					  rof = audioContext.sampleRate / (firstTrigger - shots[shots.length - 1][0])
+                      if (1/rof > rofResetTime) {
+                        rof = null
+      				    rofLast.innerHTML = 0
+                      } else {
+      				    rofLast.innerHTML = rof.toPrecision(3)
+                      }
+                    } else {
+                      rof = null
+      				  rofLast.innerHTML = 0
+                    }
+                    shots.push([firstTrigger,secondTrigger])
+
 					velocities.push(v)
-					vLast.innerHTML = v.toPrecision(3)
+					rofs.push(rof)
+
+                    updateStats()
+
 					graph2.series[1].color = 'white'
-					updateGraph2()
+//					updateGraph2()
 			  }
 			}
     }
   }
   graph1.series.addData({data: maxValue, threshold: triggerThreshold})
   graph1.series.addData({data: minValue, threshold: triggerThreshold})
+}
+
+function updateStats() {
+    console.log(velocities)
+    console.log(rofs)
+
+	vLast.innerHTML = velocities[velocities.length-1].toPrecision(3)
+	vAvg.innerHTML = _.mean(velocities).toPrecision(3)
+	vMin.innerHTML = _.min(velocities).toPrecision(3)
+	vMax.innerHTML = _.max(velocities).toPrecision(3)
+	vStdDev.innerHTML = stdDev(velocities).toPrecision(3)
+
+	if (rof === null) {
+	  rofLast.innerHTML = 0
+	} else {
+	  rofLast.innerHTML = rof.toPrecision(3)
+		rofAvg.innerHTML = _.mean(rofs).toPrecision(3)
+		rofMin.innerHTML = _.min(rofs).toPrecision(3)
+		rofMax.innerHTML = _.max(rofs).toPrecision(3)
+		rofStdDev.innerHTML = stdDev(rofs).toPrecision(3)
+	}
 }
 
 function updateGraph2 () {
@@ -243,12 +342,12 @@ function updateGraph2 () {
       {x: firstTrigger+minTriggerDiff+1, y: triggerThreshold}
     ]
     if (secondTrigger === undefined) {
-      console.log("graphing timeout");
+//      console.log("graphing timeout");
       graph2.series[0].data = graph2.series[0].data.concat([
         {x: amplitudeBuffer.length, y: triggerThreshold}
       ]);
     } else {
-      console.log("graphing valid");
+//      console.log("graphing valid");
       graph2.series[0].data = graph2.series[0].data.concat([
         {x: secondTrigger-1, y: triggerThreshold},
         {x: secondTrigger, y: thresholdHigh},
@@ -260,7 +359,6 @@ function updateGraph2 () {
 }
 
 function bufferToSeries (inputArrays) {
-  console.log("arraysToSeries");
   var series = []
   for (var i = Math.max(0, amplitudeBuffer.length-amplitudeBuffer.size); i<amplitudeBuffer.length; i++) {
     series.push({x: i, y: amplitudeBuffer.get(i)})
@@ -307,3 +405,8 @@ CircularBuffer.prototype.set= function(i, v) {
     this.length++;
 };
 CircularBuffer.IndexError= {};
+
+function stdDev (array) {
+    var avg = _.sum(array) / array.length;
+    return Math.sqrt(_.sum(_.map(array, (i) => Math.pow((i - avg), 2))) / array.length);
+};

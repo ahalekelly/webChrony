@@ -20,7 +20,7 @@ html, body {
   padding: 0;
 }
 
-#vLast {
+#vLast, #rofLast {
   float: right;
 }
 
