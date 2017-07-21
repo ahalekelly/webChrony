@@ -1,6 +1,6 @@
 'use strict'
-var bufferLength = 512  // number of samples to collect per frame
-var circularBufferLength = 12
+var audioBufferLength = 512  // number of samples to collect per frame
+var circularBufferLength = 7000
 var triggerThreshold = 0.2
 var maxV = 300
 var minV = 10
@@ -33,7 +33,7 @@ window.AudioContext = (function () {
 var audioContext
 var javascriptNode
 var amplitudeArray = []    // array to hold sound data
-var amplitudeArrayBuffer = new CircularBuffer(circularBufferLength)
+var amplitudeBuffer
 var minValue
 var maxValue
 
@@ -51,7 +51,8 @@ var lastPoint
 
 var canvas1 = document.getElementById('canvas1')
 var canvas2 = document.getElementById('canvas2')
-var vReading = document.getElementById('vAvg')
+var vAvg = document.getElementById('vAvg')
+var vLast = document.getElementById('vLast')
 
 try {
   audioContext = new AudioContext()
@@ -86,8 +87,8 @@ var graph2 = new Rickshaw.Graph({
   min: -1,
   max: 1,
   series: [
-    {name: 'trigger', color: graphTriggerColor, data: [{x: 0, y: triggerThreshold}, {x: bufferLength * circularBufferLength - 1, y: triggerThreshold}]},
-    {name: 'data', color: 'white', data: [{x: 0, y: 0}, {x: bufferLength * circularBufferLength - 1, y: 0}]}
+    {name: 'trigger', color: graphTriggerColor, data: [{x: 0, y: triggerThreshold}, {x: circularBufferLength - 1, y: triggerThreshold}]},
+    {name: 'data', color: 'white', data: [{x: 0, y: 0}, {x: circularBufferLength - 1, y: 0}]}
   ]
 })
 
@@ -156,7 +157,7 @@ navigator.mediaDevices.getUserMedia({
 function setupAudioNodes (stream) {
   var sourceNode = audioContext.createMediaStreamSource(stream)
 
-  javascriptNode = audioContext.createScriptProcessor(bufferLength, 1, 1)
+  javascriptNode = audioContext.createScriptProcessor(audioBufferLength, 1, 1)
 
   javascriptNode.onaudioprocess = processAudio
 
@@ -165,6 +166,7 @@ function setupAudioNodes (stream) {
 
   minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
   maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
+  amplitudeBuffer = new CircularBuffer(circularBufferLength)
   resetDiff = Math.round(audioContext.sampleRate / maxROF)
   triggers = [-maxTriggerDiff]
 
@@ -176,101 +178,92 @@ function onError (e) {
 }
 
 function processAudio (audioEvent) {
-//  console.log("processAudio");
   amplitudeArray = audioEvent.inputBuffer.getChannelData(0)
-//  console.log(amplitudeArray[0]);
-  amplitudeArrayBuffer.enq(_.cloneDeep(amplitudeArray));
-  minValue = _.min(amplitudeArray)
-  maxValue = _.max(amplitudeArray)
-  for (var i = 0; i < amplitudeArray.length; i++) {
-    if (state === 2 && sampleCounter + i - firstTrigger > resetDiff) {
+  for (var i=0; i<amplitudeArray.length; i++) {
+    amplitudeBuffer.push(amplitudeArray[i])
+  }
+  minValue = _.min(amplitudeBuffer._array)
+  maxValue = _.max(amplitudeBuffer._array)
+  for (var i = amplitudeBuffer.length-audioBufferLength; i < amplitudeBuffer.length; i++) {
+    if (state === 2 && i - firstTrigger > resetDiff) {
       console.log('reset');
       state = 0;
     }
     if (state === 0 || state === 1) {
 		  if (i > 0) {
-			  lastPoint = amplitudeArray[i-1]
+			  lastPoint = amplitudeBuffer.get(i-1)
 			} else {
-			  if (amplitudeArrayBuffer.size() > 1) {
-					lastPoint = amplitudeArrayBuffer.get(1)[bufferLength-1]
-				} else {
-				  lastPoint = 0
-				}
+		      lastPoint = 0
 			}
-      var aboveThreshold = amplitudeArray[i] > triggerThreshold ;
+      var aboveThreshold = amplitudeBuffer.get(i) > triggerThreshold ;
       var previouslyBelowThreshold = lastPoint < triggerThreshold;
-      var notTooFast = (sampleCounter + i) - firstTrigger > minTriggerDiff;
-			if (state === 1 && sampleCounter + i - firstTrigger > maxTriggerDiff) { // timeout
-		//      vReading.innerHTML = 'Timeout'
-		//      shotsDiv.insertAdjacentHTML('afterbegin','<h2>Timeout</h2>')
+      var notTooFast = i - firstTrigger > minTriggerDiff;
+			if (state === 1 && i - firstTrigger > maxTriggerDiff) { // timeout
+		      vLast.innerHTML = 'Timeout'
 			  graph2.series[1].color = 'red'
 			  console.log('timeout')
-        state = 0
-				updateGraph2(amplitudeArrayBuffer.toarray())
+		      state = 0
+			  updateGraph2()
 			} else if (aboveThreshold && previouslyBelowThreshold && notTooFast) {
 			  if (state === 0) {
 		  		console.log('first trigger')
 				  state = 1;
-					firstTrigger = sampleCounter + i
+					firstTrigger = i
 					secondTrigger = undefined;
-					triggers.push(sampleCounter + i)
+					triggers.push(i)
 			  } else { // state == 1
 					console.log('second trigger')
 					state = 2;
-					secondTrigger = sampleCounter+i
-					var triggerDiff = sampleCounter + i - triggers[triggers.length - 1]
+					secondTrigger = i
+					var triggerDiff = i - triggers[triggers.length - 1]
 					var v = sensorDistance * audioContext.sampleRate / triggerDiff
-					triggers.push(sampleCounter + i)
-					var rof = audioContext.sampleRate / (sampleCounter + i - shots[shots.length - 1])
+					triggers.push(i)
+					var rof = audioContext.sampleRate / (i - shots[shots.length - 1])
 					shots.push(sampleCounter + i)
-			//        shotsDiv.insertAdjacentHTML('afterbegin','<h2>'+v.toPrecision(3)+' fps ' + (rof > 0.1 ? rof.toPrecision(3) + " rps" : "") +'</h2>')
 					velocities.push(v)
-					vReading.innerHTML = v.toPrecision(3)
+					vLast.innerHTML = v.toPrecision(3)
 					graph2.series[1].color = 'white'
-					updateGraph2(amplitudeArrayBuffer.toarray())
+					updateGraph2()
 			  }
 			}
     }
   }
   graph1.series.addData({data: maxValue, threshold: triggerThreshold})
   graph1.series.addData({data: minValue, threshold: triggerThreshold})
-  sampleCounter += bufferLength
 }
 
-function updateGraph2 (inputArrays) {
+function updateGraph2 () {
   console.log("updateGraph2");
-    inputArrays.reverse();
-    graph2.series[1].data = arraysToSeries(inputArrays)
+    graph2.series[1].data = bufferToSeries(amplitudeBuffer)
     graph2.series[0].data = [
-      {x: sampleCounter - bufferLength * (circularBufferLength - 1), y: triggerThreshold},
+      {x: Math.max(0, amplitudeBuffer.length - amplitudeBuffer.size), y: triggerThreshold},
       {x: firstTrigger-1, y: triggerThreshold},
       {x: firstTrigger, y: thresholdHigh},
       {x: firstTrigger+minTriggerDiff, y: thresholdHigh},
       {x: firstTrigger+minTriggerDiff+1, y: triggerThreshold}
     ]
     if (secondTrigger === undefined) {
+      console.log("graphing timeout");
       graph2.series[0].data = graph2.series[0].data.concat([
-        {x: sampleCounter + bufferLength - 1, y: triggerThreshold}
+        {x: amplitudeBuffer.length, y: triggerThreshold}
       ]);
     } else {
+      console.log("graphing valid");
       graph2.series[0].data = graph2.series[0].data.concat([
         {x: secondTrigger-1, y: triggerThreshold},
         {x: secondTrigger, y: thresholdHigh},
-        {x: sampleCounter + bufferLength - 1, y: thresholdHigh}
+        {x: amplitudeBuffer.length, y: thresholdHigh}
       ]);
     }
+//    console.log(JSON.stringify(graph2.series[0].data));
     graph2.render()
 }
 
-function arraysToSeries (inputArrays) {
+function bufferToSeries (inputArrays) {
   console.log("arraysToSeries");
   var series = []
-  var i = sampleCounter - bufferLength * (circularBufferLength - 1)
-  for (var whichArray=0; whichArray < inputArrays.length; whichArray++) {
-    for (var arrayPos=0; arrayPos < inputArrays[whichArray].length; arrayPos++) {
-      series.push({x: i, y: inputArrays[whichArray][arrayPos]})
-      i++
-    }
+  for (var i = Math.max(0, amplitudeBuffer.length-amplitudeBuffer.size); i<amplitudeBuffer.length; i++) {
+    series.push({x: i, y: amplitudeBuffer.get(i)})
   }
   return series
 }
@@ -280,3 +273,37 @@ function drawGraph1 () {
   graph1.render()
   requestAnimFrame(drawGraph1)
 }
+
+// Circular buffer storage. Externally-apparent 'length' increases indefinitely
+// while any items with indexes below length-n will be forgotten (undefined
+// will be returned if you try to get them, trying to set is an exception).
+// n represents the initial length of the array, not a maximum
+function CircularBuffer(n) {
+  this._array= new Array(n);
+  this.length= 0;
+  this.size=n
+}
+CircularBuffer.prototype.toString= function() {
+  return '[object CircularBuffer('+this._array.length+') length '+this.length+']';
+};
+CircularBuffer.prototype.get= function(i) {
+  if (i<0 || i<this.length-this._array.length)
+    return undefined;
+  return this._array[i%this._array.length];
+};
+CircularBuffer.prototype.push = function(v) {
+  this._array[this.length%this._array.length] = v;
+  this.length++;
+};
+CircularBuffer.prototype.set= function(i, v) {
+  if (i<0 || i<this.length-this._array.length)
+    throw CircularBuffer.IndexError;
+  while (i>this.length) {
+    this._array[this.length%this._array.length]= undefined;
+    this.length++;
+  }
+  this._array[i%this._array.length]= v;
+  if (i==this.length)
+    this.length++;
+};
+CircularBuffer.IndexError= {};

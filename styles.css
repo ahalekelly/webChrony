@@ -20,6 +20,10 @@ html, body {
   padding: 0;
 }
 
+#vLast {
+  float: right;
+}
+
 #view-source {
   position: fixed;
   display: block;
