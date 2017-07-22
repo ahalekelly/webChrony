@@ -93,7 +93,7 @@
 									</div>
 								</div>
 							</section>
-							<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+							<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="shots">
 								<table class="mdl-data-table mdl-js-data-table mdl-data-table full-width">
 									<thead>
 										<tr>
@@ -103,30 +103,12 @@
 										</tr>
 									</thead>
 									<tbody>
-										<tr>
-											<td>72.4</td>
-											<td>12.2</td>
+										<tr v-for="shot in shots" v-bind:id="shot.firstTrigger+'-row'">
+											<td>{{ shot.v | round(3) }}</td>
+											<td>{{ shot.rof | round(3) }}</td>
 											<td>
-												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
-													<i class="material-icons">close</i>
-												</button>
-											</td>
-										</tr>
-										<tr>
-											<td>67.2</td>
-											<td>7.2</td>
-											<td>
-												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
-													<i class="material-icons">close</i>
-												</button>
-											</td>
-										</tr>
-										<tr>
-											<td>74.9</td>
-											<td></td>
-											<td>
-												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" id="close">
-													<i class="material-icons">close</i>
+												<button class="mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--icon" v-bind:id="shot.firstTrigger" onclick="deleteShot(this)">
+													<i class="material-icons">delete</i>
 												</button>
 											</td>
 										</tr>
@@ -169,11 +151,13 @@
 					</footer>
 				</main>
 			</div>
-			<script src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.6.0/rickshaw.min.css" />
-			<script src="https://d3js.org/d3.v3.min.js"></script>
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/rickshaw/1.6.0/rickshaw.min.js"></script>
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+			<link rel="stylesheet" href="https://unpkg.com/rickshaw/rickshaw.min.css"/>
+			<script src="https://unpkg.com/material-design-lite/dist/material.js"></script>
+			<script src="https://unpkg.com/vue/dist/vue.js"></script>
+			<script src="https://unpkg.com/vue-mdl/dist/vue-mdl.js"></script>
+			<script src="https://unpkg.com/d3@3/d3.js"></script>
+			<script src="https://unpkg.com/rickshaw/rickshaw.js"></script>
+			<script src="https://unpkg.com/lodash/lodash.js"></script>
 			<script src="webChrony.js"></script>
 			<script>
 			</script>
