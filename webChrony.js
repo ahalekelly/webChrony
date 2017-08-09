@@ -1,6 +1,6 @@
 'use strict'
-var audioBufferLength = 256  // number of samples to collect per frame
-var circularBufferLength = 7500
+var audioBufferLength = 4096  // number of samples to collect per frame
+var circularBufferLength = 	8192
 var triggerThreshold = 0.2
 var maxV = 300
 var minV = 10
