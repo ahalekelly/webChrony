@@ -1,11 +1,13 @@
 'use strict'
+var debugMode = ''
+
 var audioBufferLength = 4096  // number of samples to collect per frame
-var circularBufferLength = 	8192
-var triggerThreshold = 0.2
-var maxV = 300
-var minV = 10
+var circularBufferLength = 	audioBufferLength*4
+var triggerThreshold
+var maxV
+var minV
 var maxROF = 25
-var sensorDistance = 1.125
+var sensorDistance
 var graphTriggerColor = 'lawngreen'
 var thresholdHigh = 0.98
 var rofResetTime = 5
@@ -17,35 +19,19 @@ var amplitudeBuffer
 var minValue
 var maxValue
 
+var lastProcessed = 0
 var state = 0
 var firstTrigger = 0
 var secondTrigger
+var triggers = []
 var shots = []
 var minTriggerDiff
 var maxTriggerDiff
 var resetDiff
 var lastPoint
+var lastShotBuffer
 
-// Hacks to handle vendor prefixes
-navigator.getUserMedia = (navigator.getUserMedia ||
-navigator.webkitGetUserMedia ||
-navigator.mozGetUserMedia ||
-navigator.msGetUserMedia)
-
-window.requestAnimFrame = (function () {
-  return window.requestAnimationFrame ||
-  window.webkitRequestAnimationFrame ||
-  window.mozRequestAnimationFrame ||
-  function (callback, element) {
-    window.setTimeout(callback, 1000 / 60)
-  }
-})()
-
-window.AudioContext = (function () {
-  return window.webkitAudioContext || window.AudioContext || window.mozAudioContext
-})()
-
-document.getElementById('spacing').addEventListener('keyup', function () {
+spacing.addEventListener('keyup', function() {
   var input = parseFloat(this.value)
   if (Number.isNaN(input) || input === 0 || typeof input !== 'number') {
     console.log('invalid input:')
@@ -55,15 +41,18 @@ document.getElementById('spacing').addEventListener('keyup', function () {
     console.log(input)
     sensorDistance = input
 
-    for (var shoti = 0; shoti < shots.length; shoti++) {
-      shots[shoti]['v'] = sensorDistance * audioContext.sampleRate / (shots[shoti][secondTrigger] - shots[shoti][firstTrigger])
-    }
+		if (shots.length > 0) {
+			for (var shoti = 0; shoti < shots.length; shoti++) {
+				shots[shoti]['v'] = sensorDistance * audioContext.sampleRate / (shots[shoti][secondTrigger] - shots[shoti][firstTrigger])
+			}
+			updateStats()
+		}
     minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
     maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
-    updateStats()
   }
 })
-document.getElementById('threshold').addEventListener('keyup', function () {
+
+threshold.addEventListener('keyup', function() {
   var input = parseFloat(this.value)
   if (Number.isNaN(input) || input === 0 || typeof input !== 'number') {
     console.log('invalid input:')
@@ -74,7 +63,8 @@ document.getElementById('threshold').addEventListener('keyup', function () {
     triggerThreshold = input
   }
 })
-document.getElementById('vMinSetting').addEventListener('keyup', function () {
+
+vMinSetting.addEventListener('keyup', function() {
   var input = parseFloat(this.value)
   if (Number.isNaN(input) || input === 0 || typeof input !== 'number') {
     console.log('invalid input:')
@@ -86,7 +76,8 @@ document.getElementById('vMinSetting').addEventListener('keyup', function () {
     minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
   }
 })
-document.getElementById('vMaxSetting').addEventListener('keyup', function () {
+
+vMaxSetting.addEventListener('keyup', function() {
   var input = parseFloat(this.value)
   if (Number.isNaN(input) || input === 0 || typeof input !== 'number') {
     console.log('invalid input:')
@@ -98,6 +89,7 @@ document.getElementById('vMaxSetting').addEventListener('keyup', function () {
     maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
   }
 })
+
 
 var canvas1 = document.getElementById('canvas1')
 var canvas2 = document.getElementById('canvas2')
@@ -133,11 +125,6 @@ var shotsTable = new Vue({
   }
 })
 
-try {
-  audioContext = new AudioContext()
-} catch (e) {
-  console.err('Web Audio API is not supported in this browser')
-}
 
 var graph1 = new Rickshaw.Graph({
   element: canvas1,
@@ -166,14 +153,23 @@ var graph2 = new Rickshaw.Graph({
   min: -1,
   max: 1,
   series: [
-    {name: 'trigger', color: graphTriggerColor, data: [{x: 0, y: triggerThreshold}, {x: circularBufferLength - 1, y: triggerThreshold}]},
+    {name: 'trigger', color: graphTriggerColor, data: [{x: 0, y: 0}, {x: circularBufferLength - 1, y: 0}]},
     {name: 'data', color: 'white', data: [{x: 0, y: 0}, {x: circularBufferLength - 1, y: 0}]}
   ]
 })
 
 graph1.series.addData({threshold: triggerThreshold})
 
-drawGraph1()
+window.requestAnimationFrame = (function () { // polyfill
+	return window.requestAnimationFrame ||
+	window.webkitRequestAnimationFrame ||
+	window.mozRequestAnimationFrame ||
+	function (callback, element) {
+		window.setTimeout(callback, 1000 / 60)
+	}
+})()
+
+graph1.render()
 graph2.render()
 
 window.onresize = function () {
@@ -216,38 +212,68 @@ function moveHandler (e) {
   triggerThreshold = Math.max(0.01, (rect.height / 2 - (e.clientY - rect.top)) / (rect.height / 2))
 }
 
-/*
-  var iv = setInterval( function() {
-  var data = { data: Math.floor(Math.random() * 40) };
-  graph1.series.addData(data);
-  graph1.render();
-  }, 250 );
-*/
-navigator.mediaDevices.getUserMedia({
-  video: false,
-  audio: {
-    channelCount: 1,
-    sampleRate: 48000,
-    volume: 1.0,
-    echoCancellation: false
-  }
-}).then(setupAudioNodes).catch(onError)
+if (debugMode == "load") {
+	var filename = "2018-03-02T11:56:56.345Z"
+	console.log(Object.keys(localStorage))
+	lastShotBuffer = JSON.parse(localStorage[filename])
+	audioContext = {}
+	audioContext.sampleRate = lastShotBuffer.sampleRate
+	console.log(audioContext.sampeRate)
+	console.log(lastShotBuffer)
+	console.log(lastShotBuffer.length)
+	console.log(lastShotBuffer.size)
+	setupProcessor()
+	amplitudeBuffer.length = lastShotBuffer.length
+	amplitudeBuffer.size = lastShotBuffer.size
+	amplitudeBuffer._array = lastShotBuffer._array
+	processAudio()
+	graph1.render()
+	updateGraph2()
+} else {
+	console.log('normal operation, not loading from buffer')
+
+	navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia) // Hacks to handle vendor prefixes
+	window.AudioContext = (function () {return window.webkitAudioContext || window.AudioContext || window.mozAudioContext})()
+	try {audioContext = new AudioContext()} catch (e) {console.err('Web Audio API is not supported in this browser')}
+
+	var keyUpEvent = new Event('keyup')
+	spacing.dispatchEvent(keyUpEvent)
+	threshold.dispatchEvent(keyUpEvent)
+	vMinSetting.dispatchEvent(keyUpEvent)
+	vMaxSetting.dispatchEvent(keyUpEvent)
+	console.log(sensorDistance, triggerThreshold, minV, maxV)
+
+	navigator.mediaDevices.getUserMedia({
+		video: false,
+		audio: {
+			channelCount: 1,
+			sampleRate: 48000,
+			volume: 1.0,
+			echoCancellation: false
+		}
+	}).then(setupAudioNodes).catch(onError)
+	drawGraph1()
+}
+
 
 function setupAudioNodes (stream) {
   var sourceNode = audioContext.createMediaStreamSource(stream)
 
   javascriptNode = audioContext.createScriptProcessor(audioBufferLength, 1, 1)
 
-  javascriptNode.onaudioprocess = processAudio
+  javascriptNode.onaudioprocess = onAudioProcess
 
   sourceNode.connect(javascriptNode)
   javascriptNode.connect(audioContext.destination)
+	setupProcessor()
+}
+
+function setupProcessor() {
 
   minTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / maxV)
   maxTriggerDiff = Math.round(sensorDistance * audioContext.sampleRate / minV)
   amplitudeBuffer = new CircularBuffer(circularBufferLength)
   resetDiff = Math.round(audioContext.sampleRate / maxROF)
-
   console.log(audioContext.sampleRate, minTriggerDiff, maxTriggerDiff)
 }
 
@@ -274,30 +300,37 @@ function calculateRof (i) {
   return rof
 }
 
-function processAudio (audioEvent) {
+function onAudioProcess(audioEvent) {
   amplitudeArray = audioEvent.inputBuffer.getChannelData(0)
   for (var i = 0; i < amplitudeArray.length; i++) {
     amplitudeBuffer.push(amplitudeArray[i])
   }
+	processAudio()
+}
+
+function processAudio () {
   minValue = _.min(amplitudeBuffer._array)
   maxValue = _.max(amplitudeBuffer._array)
-  for (var i = amplitudeBuffer.length - audioBufferLength; i < amplitudeBuffer.length; i++) {
-    if (state === 2 && i - firstTrigger > resetDiff) {
-//      console.log('reset');
+  for (; lastProcessed < amplitudeBuffer.length; lastProcessed++) {
+	// trigger state machine
+	// 0 = waiting for first trigger
+	// 1 = triggered, waiting for second
+	// 2 =  triggered twice, waiting for reset
+    if (state === 2 && lastProcessed - firstTrigger > resetDiff) {
       updateGraph2()
       state = 0
     }
     if (state === 0 || state === 1) {
-      if (i > 0) {
-        lastPoint = amplitudeBuffer.get(i - 1)
+      if (lastProcessed > 0) {
+        lastPoint = amplitudeBuffer.get(lastProcessed - 1)
       } else {
         lastPoint = 0
       }
-      var aboveThreshold = amplitudeBuffer.get(i) > triggerThreshold
+      var aboveThreshold = amplitudeBuffer.get(lastProcessed) > triggerThreshold
       var previouslyBelowThreshold = lastPoint < triggerThreshold
-      var notTooFast = i - firstTrigger > minTriggerDiff
+      var notTooFast = lastProcessed - firstTrigger > minTriggerDiff
 
-      if (state === 1 && i - firstTrigger > maxTriggerDiff) { // timeout
+      if (state === 1 && lastProcessed - firstTrigger > maxTriggerDiff) { // timeout
         vLast.innerHTML = 'Timeout'
         graph2.series[1].color = 'red'
         console.log('timeout')
@@ -315,16 +348,17 @@ function processAudio (audioEvent) {
         }
         state = 0
         updateGraph2()
-      } else if (aboveThreshold && previouslyBelowThreshold && notTooFast) {
+      } else if (aboveThreshold && previouslyBelowThreshold && notTooFast) { // if valid trigger
+				triggers.push(lastProcessed)
         if (state === 0) {
           console.log('first trigger')
           state = 1
-          firstTrigger = i
+          firstTrigger = lastProcessed
           secondTrigger = undefined
         } else { // state == 1
           console.log('second trigger')
           state = 2
-          secondTrigger = i
+          secondTrigger = lastProcessed
           var v = sensorDistance * audioContext.sampleRate / (secondTrigger - firstTrigger)
 
           shots.push({
@@ -365,32 +399,35 @@ function updateStats () {
 
 function updateGraph2 () {
   console.log('updateGraph2')
+	console.log(minValue, maxValue)
+	triggers = _.dropWhile(triggers, function(o) { return o < amplitudeBuffer.length - amplitudeBuffer.size})
+	console.log(triggers)
+	console.log(amplitudeBuffer.length-amplitudeBuffer.size, amplitudeBuffer.length)
   graph2.series[1].data = bufferToSeries(amplitudeBuffer)
-  graph2.series[0].data = [
-      {x: Math.max(0, amplitudeBuffer.length - amplitudeBuffer.size), y: triggerThreshold},
-      {x: firstTrigger - 1, y: triggerThreshold},
-      {x: firstTrigger, y: thresholdHigh},
-      {x: firstTrigger + minTriggerDiff, y: thresholdHigh},
-      {x: firstTrigger + minTriggerDiff + 1, y: triggerThreshold}
-  ]
+  graph2.series[0].data = [{x: Math.max(0, amplitudeBuffer.length - amplitudeBuffer.size), y: triggerThreshold}]
+	_.forEach(triggers, function(trigger, i) {
+		graph2.series[0].data.push(
+			{x: trigger - 1, y: triggerThreshold},
+			{x: trigger, y: thresholdHigh},
+			{x: trigger + minTriggerDiff, y: thresholdHigh},
+			{x: trigger + minTriggerDiff + 1, y: triggerThreshold}
+		)
+	})
+	graph2.series[0].data.push({x: amplitudeBuffer.length, y: graph2.series[0].data[graph2.series[0].data.length-1].y})
+	console.log(graph2.series[0].data)
   if (secondTrigger === undefined) {
-//      console.log("graphing timeout");
-    graph2.series[0].data = graph2.series[0].data.concat([
-        {x: amplitudeBuffer.length, y: triggerThreshold}
-    ])
+    console.log("graphing timeout");
   } else {
-//      console.log("graphing valid");
-    graph2.series[0].data = graph2.series[0].data.concat([
-        {x: secondTrigger - 1, y: triggerThreshold},
-        {x: secondTrigger, y: thresholdHigh},
-        {x: amplitudeBuffer.length, y: thresholdHigh}
-    ])
+    console.log("graphing valid");
   }
 //    console.log(JSON.stringify(graph2.series[0].data));
+	if (debugMode == "save") {
+	  lastShotBuffer = amplitudeBuffer
+	}
   graph2.render()
 }
 
-function bufferToSeries (inputArrays) {
+function bufferToSeries () {
   var series = []
   for (var i = Math.max(0, amplitudeBuffer.length - amplitudeBuffer.size); i < amplitudeBuffer.length; i++) {
     series.push({x: i, y: amplitudeBuffer.get(i)})
@@ -408,41 +445,33 @@ function deleteShot (e) {
 function drawGraph1 () {
 //  console.log("drawGraph1");
   graph1.render()
-  requestAnimFrame(drawGraph1)
+  requestAnimationFrame(drawGraph1)
 }
 
-// Circular buffer storage. Externally-apparent 'length' increases indefinitely
-// while any items with indexes below length-n will be forgotten (undefined
-// will be returned if you try to get them, trying to set is an exception).
-// n represents the initial length of the array, not a maximum
-function CircularBuffer (n) {
-  this._array = new Array(n)
-  this.length = 0
-  this.size = n
+function saveBuffer(name) {
+	if (debugMode != "save") {
+		console.log('not in save mode')
+		return
+	}
+	if (typeof(Storage) !== "undefined") {
+		if (name == undefined) {
+  		var filename = new Date().toISOString()
+		} else {
+  		var filename = new Date().toISOString()+'-'+name
+		}
+		console.log(filename)
+		console.log(_.min(lastShotBuffer._array),_.min(lastShotBuffer._array))
+		lastShotBuffer.sampleRate = audioContext.sampleRate
+		localStorage[filename] = JSON.stringify(lastShotBuffer)
+		return filename
+	} else {
+		console.log('no Storage support')
+	}
 }
-CircularBuffer.prototype.toString = function () {
-  return '[object CircularBuffer(' + this._array.length + ') length ' + this.length + ']'
-}
-CircularBuffer.prototype.get = function (i) {
-  if (i < 0 || i < this.length - this._array.length) { return undefined }
-  return this._array[i % this._array.length]
-}
-CircularBuffer.prototype.push = function (v) {
-  this._array[this.length % this._array.length] = v
-  this.length++
-}
-CircularBuffer.prototype.set = function (i, v) {
-  if (i < 0 || i < this.length - this._array.length) { throw CircularBuffer.IndexError }
-  while (i > this.length) {
-    this._array[this.length % this._array.length] = undefined
-    this.length++
-  }
-  this._array[i % this._array.length] = v
-  if (i === this.length) { this.length++ }
-}
-CircularBuffer.IndexError = {}
 
 function stdDev (array) {
   var avg = _.sum(array) / array.length
   return Math.sqrt(_.sum(_.map(array, (i) => Math.pow((i - avg), 2))) / array.length)
 };
+
+console.log('end of file')
